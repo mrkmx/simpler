@@ -23,11 +23,14 @@ module Simpler
     end
 
     def routes(&block)
-      @router.instance_eval(&block)
+      router.instance_eval(&block)
     end
 
     def call(env)
-      route = @router.route_for(env)
+      route = router.route_for(env)
+      return not_found_url(env) unless route
+
+      env['simpler.params'] = route.params(env['REQUEST_PATH'])
       controller = route.controller.new(env)
       action = route.action
 
@@ -35,6 +38,8 @@ module Simpler
     end
 
     private
+
+    attr_reader :router
 
     def require_app
       Dir["#{Simpler.root}/app/**/*.rb"].each { |file| require file }
@@ -52,6 +57,14 @@ module Simpler
 
     def make_response(controller, action)
       controller.make_response(action)
+    end
+
+    def not_found_url(env)
+      [
+        404,
+        { 'Content-Type' => 'text/plain' },
+        ["Error 404: Page Not Found: #{env['PATH_INFO']}\n"]
+      ]
     end
 
   end
